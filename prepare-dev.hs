@@ -92,14 +92,7 @@ main = do
       env = envname opts
       resultpkg = resultPkgPath opts
       resultenv = resultEnvPath opts
-
-  -- print (pkg,env)
-  -- print (resultpkg,resultenv)
   
-  drvlst <- concat <$> mapM (obtainFromAttrib (return . Right . lines)) [pkg]
-  putStrLn "drvs = " 
-  mapM_ putStrLn drvlst
-  putStrLn "************"
 
 
   pkgolst <- (nub . sort . concat) <$> mapM (obtainFromAttrib getOutputsFromDeriv) [pkg]
@@ -112,19 +105,32 @@ main = do
   mapM_ putStrLn envolst 
   mkSymbLnks resultenv envolst
  
+  pkgdrvlst <- concat <$> mapM (obtainFromAttrib (return . Right . lines)) [pkg]
+  let exclusionlst = pkgdrvlst
+  putStrLn "************"
+
+
+  erlst <- obtainFromAttrib getReferencesFromDeriv env
+  let erlst' = filter (not . flip elem exclusionlst) erlst
+  mapM_ putStrLn erlst'
+
 
   {- 
+
+  -- envdrvlst <- obtainFromAttrib (return . Right . lines) env
+  --  ++ envolst
+  -- putStrLn "drvs = " 
+  -- mapM_ putStrLn drvlst
+  -- putStrLn "===env ref after=======" 
+
   putStrLn "========"
   putStrLn "references="
   lst' <- concat <$> mapM (obtainFromAttrib getReferencesFromDeriv) [pkg]
   let rlst' = (nub . sort) lst'
   mapM_ putStrLn rlst'
 
-  putStrLn "===env ref before======="
-  erlst <- obtainFromAttrib getReferencesFromDeriv env
-  mapM_ putStrLn erlst
-  putStrLn "===env ref after=======" 
-  let erlst' = filter (not . flip elem drvlst) erlst
-  mapM_ putStrLn erlst'
-  -}
+  putStrLn "===env ref before=======" -}
+  -- mapM_ putStrLn erlst
+
+  
   
