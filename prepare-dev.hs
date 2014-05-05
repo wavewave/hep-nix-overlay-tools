@@ -38,39 +38,61 @@ mkDerivationFromHepNixOverlayAttrib aname = do
   return (excodeToEither res)
 
 
-  {-  case excode of 
-    ExitSuccess -> return (Right (sout,serr)) 
-    ExitFailure _ -> return (Left serr) -}
-
-getReferences :: FilePath -> IO (Either String [String])
-getReferences deriv = do
+getReferencesFromDeriv :: FilePath -> IO (Either String [String])
+getReferencesFromDeriv deriv = do
   res <- nixStore ["--query", "--references", deriv] 
   (return . either Left (Right . lines . fst) . excodeToEither) res
 
-
+{-
 getReferencesFromOneAttrib :: String -> IO [FilePath]
 getReferencesFromOneAttrib aname = do 
   Right (sout,serr) <- mkDerivationFromHepNixOverlayAttrib aname
-  let act x = do Right lst <- getReferences x
+  let act x = do Right lst <- getReferencesFromDeriv x
+                 return lst
+  concat <$> mapM act (lines sout)
+-}
+
+obtainFromAttrib :: (FilePath -> IO (Either String [String])) -> String -> IO [String]
+obtainFromAttrib f aname = do 
+  Right (sout,serr) <- mkDerivationFromHepNixOverlayAttrib aname
+  let act x = do Right lst <- f x
                  return lst
   concat <$> mapM act (lines sout)
 
 
-  {- 
-  mapM_ (mapM_ (F.mapM_ putStrLn) <=< showReferences) (lines sout)
-  putStrLn "-------"
-  putStrLn "serr = " 
-  putStrLn serr 
-  putStrLn "-------"
-  -}
+getOutputsFromDeriv :: FilePath -> IO (Either String [String]) 
+getOutputsFromDeriv deriv = do 
+  res <- nixStore ["--query", "--outputs", deriv] 
+  (return . either Left (Right . lines . fst) . excodeToEither) res
 
 
+  
 
+main :: IO ()
 main = do
-  -- homedir <- getHomeDirectory 
   args <- getArgs 
-  let names = [args !! 0, args !! 1] 
-  lst <- concat <$> mapM getReferencesFromOneAttrib names
-  -- lst2 <- getReferencesFromOneAttrib name2
-  let rlst = (nub . sort) lst
-  mapM_ putStrLn rlst 
+  let names = [args !! 0] 
+      envname = args !! 1
+ 
+  drvlst <- concat <$> mapM (obtainFromAttrib (return . Right . lines)) names 
+  putStrLn "drvs = " 
+  mapM_ putStrLn drvlst
+  putStrLn "************"
+  lst <- concat <$> mapM (obtainFromAttrib getOutputsFromDeriv)  names
+  let olst = (nub . sort) lst
+  putStrLn "outputs=" 
+  mapM_ putStrLn olst 
+  putStrLn "========"
+  putStrLn "references="
+  lst' <- concat <$> mapM (obtainFromAttrib getReferencesFromDeriv)  names
+  let rlst' = (nub . sort) lst'
+  mapM_ putStrLn rlst'
+
+  putStrLn "===env ref before======="
+  erlst <- obtainFromAttrib getReferencesFromDeriv envname
+  mapM_ putStrLn erlst
+  putStrLn "===env ref after=======" 
+  let erlst' = filter (not . flip elem drvlst) erlst
+  mapM_ putStrLn erlst'
+ 
+  
