@@ -3,7 +3,8 @@ module Main where
 import Control.Applicative
 import Control.Monad
 -- import Control.Monad.Trans.Either
-import qualified Data.Foldable as F
+-- import qualified Data.Foldable as F
+import Data.List
 import System.Directory
 import System.Environment
 import System.Exit
@@ -50,8 +51,6 @@ getReferences deriv = do
 getReferencesFromOneAttrib :: String -> IO [FilePath]
 getReferencesFromOneAttrib aname = do 
   Right (sout,serr) <- mkDerivationFromHepNixOverlayAttrib aname
- 
-  putStrLn "sout = " 
   let act x = do Right lst <- getReferences x
                  return lst
   concat <$> mapM act (lines sout)
@@ -65,9 +64,13 @@ getReferencesFromOneAttrib aname = do
   putStrLn "-------"
   -}
 
+
+
 main = do
   -- homedir <- getHomeDirectory 
   args <- getArgs 
-  let name = args !! 0
-  lst <- getReferencesFromOneAttrib name
-  mapM_ putStrLn lst 
+  let names = [args !! 0, args !! 1] 
+  lst <- concat <$> mapM getReferencesFromOneAttrib names
+  -- lst2 <- getReferencesFromOneAttrib name2
+  let rlst = (nub . sort) lst
+  mapM_ putStrLn rlst 
