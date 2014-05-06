@@ -67,10 +67,15 @@ getReferencesFromDeriv deriv = do
 
 obtainFromAttrib :: (FilePath -> IO (Either String [String])) -> String -> IO [String]
 obtainFromAttrib f aname = do 
-  Right (sout,serr) <- mkDerivationFromHepNixOverlayAttrib aname
-  let act x = do Right lst <- f x
-                 return lst
-  concat <$> mapM act (lines sout)
+  r1 <- mkDerivationFromHepNixOverlayAttrib aname
+  case r1 of
+    Left err1 -> error err1 
+    Right (sout,serr) -> do 
+      let act x = do r <- f x 
+                     case r of 
+                       Left err -> error err
+                       Right lst -> return lst
+      concat <$> mapM act (lines sout)
 
 
 getOutputsFromDeriv :: FilePath -> IO (Either String [String]) 
@@ -107,6 +112,8 @@ main = do
       resultenv = resultEnvPath opts
   
   pkgolst <- (nub . sort . concat) <$> mapM (obtainFromAttrib getOutputsFromDeriv) [pkg]
+  prlst <- (nub . sort . concat) <$> mapM (obtainFromAttrib getReferencesFromDeriv) [pkg]
+
   putStrLn "making links of output path from main package derivation" 
   mapM_ putStrLn pkgolst 
   mkSymbLnks resultpkg pkgolst
@@ -120,14 +127,21 @@ main = do
   let exclusionlst = pkgdrvlst
   putStrLn "************"
 
-  erlst <- filter (not . flip elem exclusionlst) <$> obtainFromAttrib getReferencesFromDeriv env
-  mapM_ realise erlst 
+  erlst <- obtainFromAttrib getReferencesFromDeriv env
+  let rlst = (filter (not . flip elem exclusionlst) . nub . sort) (prlst ++ erlst) 
 
+  putStrLn "-- will derive the following --" 
+  mapM_ putStrLn rlst
+  putStrLn "-------------------------------"
+  
+  mapM_ realise rlst 
+
+  
   r <- realiseWithShellDryRun env
   case r of
     Left err -> putStrLn ("ERROR: " ++ err)
     Right (sout,serr) -> putStrLn "SUCCESS" >> putStrLn sout
-
+  
   
 
   
