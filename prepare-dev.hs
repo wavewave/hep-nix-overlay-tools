@@ -4,8 +4,6 @@ module Main where
 
 import Control.Applicative
 import Control.Monad
--- import Control.Monad.Trans.Either
--- import qualified Data.Foldable as F
 import Data.List
 import System.Console.CmdArgs
 import System.Directory
@@ -40,6 +38,10 @@ nixInstantiate = simpleRunCmd "nix-instantiate"
 
 nixStore :: [String] -> IO (ExitCode,String, String)
 nixStore = simpleRunCmd "nix-store"
+
+nixShell :: [String] -> IO (ExitCode,String,String)
+nixShell = simpleRunCmd "nix-shell"
+
 
 getNixPath :: IO (Maybe FilePath) 
 getNixPath = catchIOError (Just <$> getEnv "NIX_PATH") $ \_ -> return Nothing
@@ -90,6 +92,11 @@ realise fp = do
   putStrLn $ "realise " ++ fp
   nixStore ["--realise", fp] 
 
+realiseWithShellDryRun :: String -> IO (Either String (String, String))
+realiseWithShellDryRun aname = do 
+  Just nixpath <- getNixPath 
+  res@(excode,sout,serr) <- nixShell [nixpath, "-A", "hepNixOverlay." ++ aname, "--dry-run", "--command", "genericBuild"] 
+  return (excodeToEither res)
 
 main :: IO ()
 main = do
@@ -113,27 +120,15 @@ main = do
   let exclusionlst = pkgdrvlst
   putStrLn "************"
 
-
   erlst <- filter (not . flip elem exclusionlst) <$> obtainFromAttrib getReferencesFromDeriv env
-  -- mapM_ putStrLn erlst
   mapM_ realise erlst 
 
-  {- 
+  r <- realiseWithShellDryRun env
+  case r of
+    Left err -> putStrLn ("ERROR: " ++ err)
+    Right (sout,serr) -> putStrLn "SUCCESS" >> putStrLn sout
 
-  -- envdrvlst <- obtainFromAttrib (return . Right . lines) env
-  --  ++ envolst
-  -- putStrLn "drvs = " 
-  -- mapM_ putStrLn drvlst
-  -- putStrLn "===env ref after=======" 
-
-  putStrLn "========"
-  putStrLn "references="
-  lst' <- concat <$> mapM (obtainFromAttrib getReferencesFromDeriv) [pkg]
-  let rlst' = (nub . sort) lst'
-  mapM_ putStrLn rlst'
-
-  putStrLn "===env ref before=======" -}
-  -- mapM_ putStrLn erlst
+  
 
   
   
