@@ -1,0 +1,31 @@
+Name:		hep-nix-overlay-tools
+Version:	0.0
+Synopsis:	Tools for hep-nix-overlay
+Description: 	Some utility tools for hep-nix-overlay 
+Homepage:       
+License:        GPL-3
+License-file:	LICENSE
+Author:		Ian-Woo Kim
+Maintainer: 	Ian-Woo Kim <ianwookim@gmail.com>
+Category:       Application
+Tested-with:    GHC == 7.6
+Build-Type:     Simple
+Cabal-Version:  >= 1.8
+data-files:     CHANGES
+Source-repository head
+  type: git
+  location: http://www.github.com/wavewave/hep-nix-overlay-tools
+
+Executable prepare-dev
+  Main-is: prepare-dev.hs
+  hs-source-dirs: exe
+  ghc-options: 	-Wall -threaded -funbox-strict-fields -fno-warn-unused-do-bind
+  ghc-prof-options: -caf-all -auto-all
+  Build-Depends: 
+                 base == 4.*, 
+                 cmdargs >= 0.10, 
+                 directory,
+                 filepath,
+                 process, 
+                 unix
+
