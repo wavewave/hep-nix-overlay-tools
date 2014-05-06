@@ -85,6 +85,12 @@ mkSymbLnks fp xs =
   in mapM_ (\(f,s)->createSymbolicLink (fp++show f) s) ys
 
 
+realise :: FilePath -> IO (ExitCode, String, String) 
+realise fp = do
+  putStrLn $ "realise " ++ fp
+  nixStore ["--realise", fp] 
+
+
 main :: IO ()
 main = do
   opts <- cmdArgs tools
@@ -93,8 +99,6 @@ main = do
       resultpkg = resultPkgPath opts
       resultenv = resultEnvPath opts
   
-
-
   pkgolst <- (nub . sort . concat) <$> mapM (obtainFromAttrib getOutputsFromDeriv) [pkg]
   putStrLn "making links of output path from main package derivation" 
   mapM_ putStrLn pkgolst 
@@ -110,10 +114,9 @@ main = do
   putStrLn "************"
 
 
-  erlst <- obtainFromAttrib getReferencesFromDeriv env
-  let erlst' = filter (not . flip elem exclusionlst) erlst
-  mapM_ putStrLn erlst'
-
+  erlst <- filter (not . flip elem exclusionlst) <$> obtainFromAttrib getReferencesFromDeriv env
+  -- mapM_ putStrLn erlst
+  mapM_ realise erlst 
 
   {- 
 
