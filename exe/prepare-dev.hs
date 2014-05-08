@@ -110,12 +110,7 @@ realiseWithShellDryRun aname = do
   return (excodeToEither res)
 
 main :: IO ()
-main = do 
-  mstr <- getNixPath "nixpkgs"
-  print mstr
-
-main' :: IO ()
-main' = do
+main = do
   opts <- cmdArgs tools
   let pkg = pkgname opts
       env = envname opts
