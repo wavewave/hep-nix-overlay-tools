@@ -27,5 +27,6 @@ Executable prepare-dev
                  directory,
                  filepath,
                  process, 
+                 split,
                  unix
 

@@ -5,6 +5,7 @@ module Main where
 import Control.Applicative
 import Control.Monad
 import Data.List
+import Data.List.Split
 import System.Console.CmdArgs
 import System.Directory
 import System.Environment
@@ -43,8 +44,13 @@ nixShell :: [String] -> IO (ExitCode,String,String)
 nixShell = simpleRunCmd "nix-shell"
 
 
-getNixPath :: IO (Maybe FilePath) 
-getNixPath = catchIOError (Just <$> getEnv "NIX_PATH") $ \_ -> return Nothing
+getNixPath :: String -> IO (Maybe FilePath) 
+getNixPath key = catchIOError findFromNIX_PATH (const (return Nothing))
+  where findFromNIX_PATH = do
+          nixpath <- getEnv "NIX_PATH"
+          let ps = splitOn ":" nixpath
+              kvlst = map (((,) <$> fst <*> tail . snd) . break (== '=')) ps 
+          return (lookup key kvlst)
 
 excodeToEither :: (ExitCode,String,String) -> Either String (String,String)
 excodeToEither (excode,sout,serr) = 
@@ -54,7 +60,7 @@ excodeToEither (excode,sout,serr) =
 
 mkDerivationFromHepNixOverlayAttrib :: String -> IO (Either String (String,String)) 
 mkDerivationFromHepNixOverlayAttrib aname = do 
-  Just nixpath <- getNixPath 
+  Just nixpath <- getNixPath "nixpkgs" 
   res@(excode,sout,serr) <- nixInstantiate [nixpath, "-A", "hepNixOverlay." ++ aname] 
   return (excodeToEither res)
 
@@ -99,12 +105,17 @@ realise fp = do
 
 realiseWithShellDryRun :: String -> IO (Either String (String, String))
 realiseWithShellDryRun aname = do 
-  Just nixpath <- getNixPath 
+  Just nixpath <- getNixPath "nixpkgs"
   res@(excode,sout,serr) <- nixShell [nixpath, "-A", "hepNixOverlay." ++ aname, "--dry-run", "--command", "genericBuild"] 
   return (excodeToEither res)
 
 main :: IO ()
-main = do
+main = do 
+  mstr <- getNixPath "nixpkgs"
+  print mstr
+
+main' :: IO ()
+main' = do
   opts <- cmdArgs tools
   let pkg = pkgname opts
       env = envname opts
